@@ -1,84 +1,232 @@
-/* --COPYRIGHT--,BSD_EX
- * Copyright (c) 2016, Texas Instruments Incorporated
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * *  Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * *  Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * *  Neither the name of Texas Instruments Incorporated nor the names of
- *    its contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
- * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- *******************************************************************************
- *
- *                       MSP430 CODE EXAMPLE DISCLAIMER
- *
- * MSP430 code examples are self-contained low-level programs that typically
- * demonstrate a single peripheral function or device feature in a highly
- * concise manner. For this the code may rely on the device's power-on default
- * register values and settings such as the clock configuration and care must
- * be taken when combining code from several examples to avoid potential side
- * effects. Also see www.ti.com/grace for a GUI- and www.ti.com/msp430ware
- * for an API functional library-approach to peripheral configuration.
- *
- * --/COPYRIGHT--*/
-//******************************************************************************
-//  MSP430FR235x Demo - Toggle P1.0 using software
-//
-//  Description: Toggle P1.0 every 0.1s using software.
-//  By default, FR235x select XT1 as FLL reference.
-//  If XT1 is present, the PxSEL(XIN & XOUT) needs to configure.
-//  If XT1 is absent, switch to select REFO as FLL reference automatically.
-//  XT1 is considered to be absent in this example.
-//  ACLK = default REFO ~32768Hz, MCLK = SMCLK = default DCODIV ~1MHz.
-//
-//           MSP430FR2355
-//         ---------------
-//     /|\|               |
-//      | |               |
-//      --|RST            |
-//        |           P1.0|-->LED
-//
-//   Cash Hao
-//   Texas Instruments Inc.
-//   November 2016
-//   Built with IAR Embedded Workbench v6.50.0 & Code Composer Studio v6.2.0
-//******************************************************************************
 #include <msp430.h>
+#include <stdbool.h>
+#include <string.h>
+#include "controlPatternsLED.h"
+#include "keypad.h"
+#include "RGB.h"
+#include "shared.h"
+
+#define RED_LED   BIT1 
+#define GREEN_LED BIT2 
+#define BLUE_LED  BIT3 
+
+volatile unsigned int red_counter = 0;
+volatile unsigned int green_counter = 0;
+volatile unsigned int blue_counter = 0;
+
+volatile unsigned int dataSend[2] = {0, 0};
+int Data_Cnt = 0;
+
+volatile unsigned int limit_reached = 0;
+volatile unsigned int pwms = 0;
+
+volatile system_states state = LOCKED;
 
 int main(void)
 {
+    // Stop watchdog timer
     WDTCTL = WDTPW | WDTHOLD;               // Stop watchdog timer
-    
-    P1OUT &= ~BIT0;                         // Clear P1.0 output latch for a defined power-on state
-    P1DIR |= BIT0;                          // Set P1.0 to output direction
+    P3DIR |= 0b00001111;   // set keypad columns to outputs pulled high
+    P3OUT |= 0b00001111;
 
-    PM5CTL0 &= ~LOCKLPM5;                   // Disable the GPIO power-on default high-impedance mode
-                                            // to activate previously configured port settings
+    //heartbeat LED
+    P1DIR |= BIT0;                              // Sets P1.0 as an output
+    P1OUT &= ~BIT0;                             // Initializes LED to OFF
 
-    while(1)
+    P3DIR &= ~0b11110000; // set all keypad rows to inputs pulled low
+    P3REN |= 0b11111111; // permanently set all of port 3 to have resistors
+    P3OUT &= ~0b11110000; // pull down resistors
+
+    P1DIR |= RED_LED | GREEN_LED | BLUE_LED;
+    P1OUT |= RED_LED | GREEN_LED | BLUE_LED;  // Start with all ON
+
+    //heartbeat interrupt
+    TB1CCTL0 = CCIE;                            //CCIE enables Timer B0 interrupt
+    TB1CCR0 = 32768;                            //sets Timer B0 to 1 second (32.768 kHz)
+    TB1CTL = TBSSEL_1 | ID_0 | MC__UP | TBCLR;    //ACLK, No divider, Up mode, Clear timer
+
+
+    // Disable the GPIO power-on default high-impedance mode to activate
+    // previously configure port settings
+    init_LED_I2C() // what it says, but this also likely works for LCD controller
+
+    PM5CTL0 &= ~LOCKLPM5;
+
+    set_timer(); 
+
+    __enable_interrupt(); 
+    //__enable_interrupt(); 
+    int unlock = 0;
+
+    while(true)
     {
-        P1OUT ^= BIT0;                      // Toggle P1.0 using exclusive-OR
-        __delay_cycles(100000);             // Delay for 100000*(1/MCLK)=0.1s
+        unlock = 0;
+        state = LOCKED;
+        update_color(state);
+        while (unlock == 0) {
+            unlock = waitForUnlock(); // stays here until complete passkey has been entered 
+        }
+        // turn status LED Blue here
+        state = UNLOCKED;
+        update_color(state);
+        char lastInput = 'X';
+        while (lastInput != '0' && lastInput != '1' && lastInput != '2' && lastInput != '3' && lastInput != '4' && lastInput != '5' && lastInput != '6' && lastInput != '7' && lastInput != 'D') {
+            lastInput = readInput(); // stays here until user chooses a pattern, or chooses to lock the system
+        }
+        int rows;
+        int phaseTime = 25000; // 
+        send_LED_Phase_Delay(phaseTime);
+        send_LED_Timer_Set(); // enable LED-pattern-trigger timer interrupt here
+        while (lastInput != 'D') {
+            if (lastInput == '1') {
+                send_LED_Pattern(1);
+                rows = P3IN; // constantly listen for an input
+                rows &= 0b11110000; // clear any values on lower 4 bits
+                if (rows != 0b00000000) {
+                    lastInput = readInput();
+                }
+            }     
+            else if (lastInput == 'A' && phaseTime > 7000) {
+                phaseTime = phaseTime - 6250;
+                send_LED_Phase_Delay(phaseTime);
+                rows = P3IN; // constantly listen for an input
+                rows &= 0b11110000; // clear any values on lower 4 bits
+                if (rows != 0b00000000) {
+                    lastInput = readInput();
+                }
+            }
+            else if (lastInput == 'B') {
+                phaseTime = phaseTime + 6250;
+                send_LED_Phase_Delay(phaseTime);
+                rows = P3IN; // constantly listen for an input
+                rows &= 0b11110000; // clear any values on lower 4 bits
+                if (rows != 0b00000000) {
+                    lastInput = readInput();
+                }
+            }
+                
+            else if (chosenPattern == '2') {
+                send_LED_Pattern(2);
+                rows = P3IN; // constantly listen for an input
+                rows &= 0b11110000; // clear any values on lower 4 bits
+                if (rows != 0b00000000) {
+                    lastInput = readInput();
+                }
+            }
+            else if (chosenPattern == '3') {
+                send_LED_Pattern(3);
+                rows = P3IN; // constantly listen for an input
+                rows &= 0b11110000; // clear any values on lower 4 bits
+                if (rows != 0b00000000) {
+                    lastInput = readInput();
+                }
+            }
+
+            else if (chosenPattern == '0') {
+                send_LED_Pattern(0);
+                rows = P3IN; // constantly listen for an input
+                rows &= 0b11110000; // clear any values on lower 4 bits
+                if (rows != 0b00000000) {
+                    lastInput = readInput();
+                }
+            }
+
+            else if (chosenPattern == '4') {
+                send_LED_Pattern(4);
+                rows = P3IN; // constantly listen for an input
+                rows &= 0b11110000; // clear any values on lower 4 bits
+                if (rows != 0b00000000) {
+                    lastInput = readInput();
+                }
+            }
+
+            else if (chosenPattern == '5') {
+                send_LED_Pattern(5);
+                rows = P3IN; // constantly listen for an input
+                rows &= 0b11110000; // clear any values on lower 4 bits
+                if (rows != 0b00000000) {
+                    lastInput = readInput();
+                }
+            }
+
+            else if (chosenPattern == '6') {
+                send_LED_Pattern(6);
+                rows = P3IN; // constantly listen for an input
+                rows &= 0b11110000; // clear any values on lower 4 bits
+                if (rows != 0b00000000) {
+                    lastInput = readInput();
+                }
+            }
+
+            else if (chosenPattern == '7') {
+                send_LED_Pattern(7);
+                rows = P3IN; // constantly listen for an input
+                rows &= 0b11110000; // clear any values on lower 4 bits
+                if (rows != 0b00000000) {
+                    lastInput = readInput();
+                }
+            }
+
+            else {
+                rows = P3IN; // constantly listen for an input
+                rows &= 0b11110000; // clear any values on lower 4 bits
+                if (rows != 0b00000000) {
+                    lastInput = readInput();
+                }
+            }
+        }
+
+        send_LED_Timer_pause(); // disable LCD-pattern-trigger timer interrupt here (system returns to locked state)
     }
+}
+
+#pragma vector = TIMER0_B0_VECTOR
+__interrupt void TimerB0_ISR(void) {
+
+    pwms = (pwms + 1) % 256;
+
+    // Red LED
+    if (pwms == red_counter){
+        P1OUT &= ~RED_LED;
+    }
+    if (pwms == 0) {
+        P1OUT |= RED_LED;
+    }
+
+    // Green LED
+    if (pwms == green_counter) {
+        P1OUT &= ~GREEN_LED;
+    }
+    if (pwms == 0) {
+        P1OUT |= GREEN_LED;
+    }
+
+    // Blue LED
+    if (pwms == blue_counter) {
+        P1OUT &= ~BLUE_LED;
+    }
+    if (pwms == 0) {
+        P1OUT |= BLUE_LED;
+    }
+    TB0CCTL0 &= ~CCIFG;
+
+}
+
+#pragma vector = TIMER1_B0_VECTOR               //time B0 ISR
+__interrupt void TIMERB1_ISR(void) {
+    P1OUT ^= BIT0;                              //toggles P1.0 LED
+    TB1CCTL0 &= ~CCIFG;
+}
+
+#pragma vector=EUSCI_B0_VECTOR
+__interrupt void EUSCI_B0_I2C_ISR(void) {
+    if (Data_Cnt == 0) {
+        UCB0TXBUF = dataSend[0];
+        Data_Cnt = 1;
+    }
+    else {
+        UCB0TXBUF = dataSend[1];
+        Data_Cnt = 0;
+    }
+    // likely need to clear interrupt flag following this
 }

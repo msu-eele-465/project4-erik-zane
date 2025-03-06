@@ -175,7 +175,7 @@ int main(void)
                 }
             }
         }
-
+        send_LED_Pattern(0);
         send_LED_Timer_pause(); // disable LCD-pattern-trigger timer interrupt here (system returns to locked state)
     }
 }

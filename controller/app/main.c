@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "controlPatternsLED.h"
+#include "controlLCD.h"
 #include "keypad.h"
 #include "RGB.h"
 #include "shared.h"
@@ -48,14 +49,13 @@ int main(void)
 
     // Disable the GPIO power-on default high-impedance mode to activate
     // previously configure port settings
-    init_LED_I2C() // what it says, but this also likely works for LCD controller
+    init_LED_I2C(); // what it says, but this also likely works for LCD controller
 
     PM5CTL0 &= ~LOCKLPM5;
 
     set_timer(); 
 
     __enable_interrupt(); 
-    //__enable_interrupt(); 
     int unlock = 0;
 
     while(true)
@@ -74,109 +74,166 @@ int main(void)
             lastInput = readInput(); // stays here until user chooses a pattern, or chooses to lock the system
         }
         int rows;
-        int phaseTime = 25000; // 
+        int phaseTime = 25000; // 1 second
         send_LED_Phase_Delay(phaseTime);
+        send_Pattern_Speed(phaseTime); 
         send_LED_Timer_Set(); // enable LED-pattern-trigger timer interrupt here
+        bool input_change = true;
         while (lastInput != 'D') {
-            if (lastInput == '1') {
+            if (lastInput == '1' && input_change) {
                 send_LED_Pattern(1);
+                send_Pattern_Name(1);
+                input_change = false;
                 rows = P3IN; // constantly listen for an input
                 rows &= 0b11110000; // clear any values on lower 4 bits
                 if (rows != 0b00000000) {
                     lastInput = readInput();
+                    send_Latest_Input(lastInput);
+                    input_change = true;
                 }
             }     
-            else if (lastInput == 'A' && phaseTime > 7000) {
+            else if (lastInput == 'A' && phaseTime > 7000  && input_change) {
                 phaseTime = phaseTime - 6250;
                 send_LED_Phase_Delay(phaseTime);
+                send_Pattern_Speed(phaseTime); 
+                input_change = false;
                 rows = P3IN; // constantly listen for an input
                 rows &= 0b11110000; // clear any values on lower 4 bits
                 if (rows != 0b00000000) {
                     lastInput = readInput();
+                    send_Latest_Input(lastInput);
+                    input_change = true;
                 }
             }
-            else if (lastInput == 'B') {
+            else if (lastInput == 'B'  && input_change) {
                 phaseTime = phaseTime + 6250;
                 send_LED_Phase_Delay(phaseTime);
+                send_Pattern_Speed(phaseTime); 
+                input_change = false;
                 rows = P3IN; // constantly listen for an input
                 rows &= 0b11110000; // clear any values on lower 4 bits
                 if (rows != 0b00000000) {
                     lastInput = readInput();
+                    send_Latest_Input(lastInput);
+                    input_change = true;
                 }
             }
                 
-            else if (chosenPattern == '2') {
+            else if (lastInput == '2'  && input_change) {
                 send_LED_Pattern(2);
+                send_Pattern_Name(2);
+                input_change = false;
                 rows = P3IN; // constantly listen for an input
                 rows &= 0b11110000; // clear any values on lower 4 bits
                 if (rows != 0b00000000) {
                     lastInput = readInput();
+                    send_Latest_Input(lastInput);
+                    input_change = true;
                 }
             }
-            else if (chosenPattern == '3') {
+            else if (lastInput == '3'  && input_change) {
                 send_LED_Pattern(3);
+                send_Pattern_Name(3);
+                input_change = false;
                 rows = P3IN; // constantly listen for an input
                 rows &= 0b11110000; // clear any values on lower 4 bits
                 if (rows != 0b00000000) {
                     lastInput = readInput();
+                    send_Latest_Input(lastInput);
+                    input_change = true;
                 }
             }
 
-            else if (chosenPattern == '0') {
+            else if (lastInput == '0'  && input_change) {
                 send_LED_Pattern(0);
+                send_Pattern_Name(0);
+                input_change = false;
                 rows = P3IN; // constantly listen for an input
                 rows &= 0b11110000; // clear any values on lower 4 bits
                 if (rows != 0b00000000) {
                     lastInput = readInput();
+                    send_Latest_Input(lastInput);
+                    input_change = true;
                 }
             }
 
-            else if (chosenPattern == '4') {
+            else if (lastInput == '4'  && input_change) {
                 send_LED_Pattern(4);
+                send_Pattern_Name(4);
+                input_change = false;
                 rows = P3IN; // constantly listen for an input
                 rows &= 0b11110000; // clear any values on lower 4 bits
                 if (rows != 0b00000000) {
                     lastInput = readInput();
+                    send_Latest_Input(lastInput);
+                    input_change = true;
                 }
             }
 
-            else if (chosenPattern == '5') {
+            else if (lastInput == '5'  && input_change) {
                 send_LED_Pattern(5);
+                send_Pattern_Name(5);
+                input_change = false;
                 rows = P3IN; // constantly listen for an input
                 rows &= 0b11110000; // clear any values on lower 4 bits
                 if (rows != 0b00000000) {
                     lastInput = readInput();
+                    send_Latest_Input(lastInput);
+                    input_change = true;
                 }
             }
 
-            else if (chosenPattern == '6') {
+            else if (lastInput == '6'  && input_change) {
                 send_LED_Pattern(6);
+                send_Pattern_Name(6);
+                input_change = false;
                 rows = P3IN; // constantly listen for an input
                 rows &= 0b11110000; // clear any values on lower 4 bits
                 if (rows != 0b00000000) {
                     lastInput = readInput();
+                    send_Latest_Input(lastInput);
+                    input_change = true;
                 }
             }
 
-            else if (chosenPattern == '7') {
+            else if (lastInput == '7'  && input_change) {
                 send_LED_Pattern(7);
+                send_Pattern_Name(7);
+                input_change = false;
                 rows = P3IN; // constantly listen for an input
                 rows &= 0b11110000; // clear any values on lower 4 bits
                 if (rows != 0b00000000) {
                     lastInput = readInput();
+                    send_Latest_Input(lastInput);
+                    input_change = true;
                 }
             }
-
+            else if (lastInput == '9'  && input_change) {
+                send_Blinking_toggle(1); // start/stop LCD blinking
+                input_change = false;
+                rows = P3IN; // constantly listen for an input
+                rows &= 0b11110000; // clear any values on lower 4 bits
+                if (rows != 0b00000000) {
+                    lastInput = readInput();
+                    send_Latest_Input(lastInput);
+                    input_change = true;
+                }
+            }
             else {
                 rows = P3IN; // constantly listen for an input
                 rows &= 0b11110000; // clear any values on lower 4 bits
                 if (rows != 0b00000000) {
                     lastInput = readInput();
+                    send_Latest_Input(lastInput);
+                    input_change = true;
                 }
             }
         }
-        send_LED_Pattern(0);
-        send_LED_Timer_pause(); // disable LCD-pattern-trigger timer interrupt here (system returns to locked state)
+        send_LED_Pattern(0); // static on LED bar
+        send_Pattern_Name(8); // will denote clearing pattern display on LCD
+        send_Pattern_Speed(0); // will denote clearing pattern speed display
+        send_Blinking_toggle(0); // stop blinking thing
+        send_LED_Timer_Pause(); // disable LCD-pattern-trigger timer interrupt here (system returns to locked state)
     }
 }
 

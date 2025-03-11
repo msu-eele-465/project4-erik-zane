@@ -147,7 +147,6 @@ int passkey(void) {
         for (i = 0; i < 4; i++) {
             triedPin[i] = readInput();
             if (triedPin[i] == 'D') {
-                limit_reached = 0;
                 TB3CCTL0 &= ~CCIE; // prevent interrput from triggering more
                 TB3CCR0 = 1; // 1 for now to ensure that timer virtually starts at 0, 35000  is slightly more than 5 seconds
                 return 0; // this tells us to re-lock the system and stop listening for inputs
@@ -158,7 +157,6 @@ int passkey(void) {
             locked = false; // if password is correct, leave loop
         }
     }
-    limit_reached = 0;
     TB3CCTL0 &= ~CCIE; // prevent interrput from triggering more
     TB3CCR0 = 1; // 1 for now to ensure that timer virtually starts at 0, 35000  is slightly more than 5 seconds
     // enable functionality

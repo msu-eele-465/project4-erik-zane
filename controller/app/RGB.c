@@ -5,7 +5,7 @@
 #include "RGB.h"
 
 void set_timer(void) {
-    TB0CTL = TBSSEL__SMCLK | MC__UP | TBCLR; 
+    TB0CTL |= TBSSEL__SMCLK | MC__UP | TBCLR; 
     TB0CCR0 = 78; 
     TB0CCTL0 |= CCIE;
     return; 

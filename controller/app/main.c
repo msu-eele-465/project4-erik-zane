@@ -7,15 +7,15 @@
 #include "RGB.h"
 #include "shared.h"
 
-#define RED_LED   BIT1 
-#define GREEN_LED BIT2 
-#define BLUE_LED  BIT3 
+#define RED_LED   BIT4 
+#define GREEN_LED BIT5 
+#define BLUE_LED  BIT6 
 
 volatile unsigned int red_counter = 0;
 volatile unsigned int green_counter = 0;
 volatile unsigned int blue_counter = 0;
 
-volatile unsigned int dataSend[2] = {0, 0};
+volatile unsigned int dataSend[2] = {69, 43};
 int Data_Cnt = 0;
 
 volatile unsigned int limit_reached = 0;
@@ -42,18 +42,17 @@ int main(void)
     P1OUT |= RED_LED | GREEN_LED | BLUE_LED;  // Start with all ON
 
     //heartbeat interrupt
-    TB1CCTL0 = CCIE;                            //CCIE enables Timer B0 interrupt
+    TB1CCTL0 |= CCIE;                            //CCIE enables Timer B0 interrupt
     TB1CCR0 = 32768;                            //sets Timer B0 to 1 second (32.768 kHz)
-    TB1CTL = TBSSEL_1 | ID_0 | MC__UP | TBCLR;    //ACLK, No divider, Up mode, Clear timer
+    TB1CTL |= TBSSEL_1 | ID_0 | MC__UP | TBCLR;    //ACLK, No divider, Up mode, Clear timer
 
 
     // Disable the GPIO power-on default high-impedance mode to activate
     // previously configure port settings
-    init_LED_I2C(); // what it says, but this also likely works for LCD controller
-
-    PM5CTL0 &= ~LOCKLPM5;
 
     set_timer(); 
+
+    init_LED_I2C(); // what it says, but this also likely works for LCD controller
 
     __enable_interrupt(); 
     int unlock = 0;
@@ -280,10 +279,12 @@ __interrupt void EUSCI_B0_I2C_ISR(void) {
     if (Data_Cnt == 0) {
         UCB0TXBUF = dataSend[0];
         Data_Cnt = 1;
+        UCB0IFG |= UCTXIFG0; 
     }
     else {
         UCB0TXBUF = dataSend[1];
         Data_Cnt = 0;
+        //UCB0IFG &= ~UCTXIFG0; 
     }
     // likely need to clear interrupt flag following this
 }

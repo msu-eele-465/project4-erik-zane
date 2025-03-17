@@ -111,10 +111,12 @@ void init_LCD_I2C() {
     UCB0CTLW1 |= UCASTP_2; 
     UCB0TBCNT = 0x02; // send two (three inclusing slave address) bytes of data for all these 
                       // commands--one for chosen variable to alter, one for the new variable data.
-    P1SEL1 &= ~BIT3;
+    P1SEL1 &= ~BIT3; // SCL
     P1SEL0 |= BIT3;
-    P1SEL1 &= ~BIT2;
+    P1SEL1 &= ~BIT2; // SDA
     P1SEL0 |= BIT2;
+
+    PM5CTL0 &= ~LOCKLPM5;
 
     UCB0CTLW0 &= ~UCSWRST;
 

@@ -60,6 +60,8 @@ void init_LED_I2C() {
     P1SEL1 &= ~BIT2;
     P1SEL0 |= BIT2;
 
+    PM5CTL0 &= ~LOCKLPM5;
+
     UCB0CTLW0 &= ~UCSWRST;
 
     UCB0IE |= UCTXIE0; // enable IQR

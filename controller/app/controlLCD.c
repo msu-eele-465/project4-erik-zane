@@ -80,16 +80,19 @@ void send_Blinking_toggle(int Toggle) {
     UCB0TBCNT = 0x02;
     dataSend[0] = 3; // this will select the pattern selection variable on the slave
     if (Toggle == 1) {
-        dataSend[1] = 1; // send 1 unless we are resetting
+        dataSend[1] = 1; // send 1 to toggle blinking
+    }
+    else if (Toggle = 2) {
+        dataSend[1] = 2; // send 2 to toggle cursor
     }
     else {
-        dataSend[1] = 0; // turn off blinking no matter what
+        dataSend[1] = 0; // turn off cursor (and entire LCD) no matter what
     }
     UCB0CTLW0 |= UCTXSTT; // generate start condition
     return;
 
 }
-void send_Pattern_Speed(int new_speed) {
+void send_Pattern_Speed(long int new_speed) {
     UCB0I2CSA = 0x0047; // choose slave address
     UCB0TBCNT = 0x02;
     dataSend[0] = 4; // this will select the pattern selection variable on the slave

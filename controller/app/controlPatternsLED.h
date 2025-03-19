@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include "shared.h"
 
-void send_LED_Phase_Delay(int timerCount);
+void send_LED_Phase_Delay(long int timerCount);
 void send_LED_Timer_Set(void);
 void send_LED_Timer_Pause(void);
 void send_LED_Pattern(int chosenPattern);

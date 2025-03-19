@@ -71,9 +71,10 @@ int main(void)
         char lastInput = 'X';
         while (lastInput != '0' && lastInput != '1' && lastInput != '2' && lastInput != '3' && lastInput != '4' && lastInput != '5' && lastInput != '6' && lastInput != '7' && lastInput != 'D') {
             lastInput = readInput(); // stays here until user chooses a pattern, or chooses to lock the system
+            send_Latest_Input(lastInput);
         }
         int rows;
-        int phaseTime = 25000; // 1 second
+        long int phaseTime = 25000; // 1 second
         send_LED_Phase_Delay(phaseTime);
         send_Pattern_Speed(phaseTime); 
         send_LED_Timer_Set(); // enable LED-pattern-trigger timer interrupt here
@@ -207,6 +208,17 @@ int main(void)
                     input_change = true;
                 }
             }
+            else if (lastInput == 'C'  && input_change) {
+                send_Blinking_toggle(2); // Turn cursor on/off
+                input_change = false;
+                rows = P3IN; // constantly listen for an input
+                rows &= 0b11110000; // clear any values on lower 4 bits
+                if (rows != 0b00000000) {
+                    lastInput = readInput();
+                    send_Latest_Input(lastInput);
+                    input_change = true;
+                }
+            }
             else if (lastInput == '9'  && input_change) {
                 send_Blinking_toggle(1); // start/stop LCD blinking
                 input_change = false;
@@ -228,10 +240,8 @@ int main(void)
                 }
             }
         }
-        send_LED_Pattern(0); // static on LED bar
-        send_Pattern_Name(8); // will denote clearing pattern display on LCD
-        send_Pattern_Speed(0); // will denote clearing pattern speed display
-        send_Blinking_toggle(0); // stop blinking thing
+        send_LED_Pattern(8); // turn off LED bar
+        send_Blinking_toggle(0); // totally clear LCD
         send_LED_Timer_Pause(); // disable LCD-pattern-trigger timer interrupt here (system returns to locked state)
     }
 }

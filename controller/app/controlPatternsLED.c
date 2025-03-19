@@ -6,7 +6,7 @@
 
 // review digital page 424, 414
 
-void send_LED_Phase_Delay(int timerCount) {
+void send_LED_Phase_Delay(long int timerCount) {
     UCB0I2CSA = 0x0045; // choose slave address
     UCB0TBCNT = 0x02; // always send 2 bytes
     dataSend[0] = 1; // this will select the pattern selection variable on the slave

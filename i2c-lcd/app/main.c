@@ -2,20 +2,21 @@
 #include <msp430.h>
 #include "lcd_shared.h"
 #include "lcd_commands.h"
+#include <stdint.h>
 #include <string.h>
+#include <stdint.h>
 
 // P1.2 is data pin (I2C), P1.3 is clock
-volatile unsigned int Last_char_int;
+volatile uint8_t Last_char_int;
 volatile char Last_char_char;
-volatile unsigned int Pattern_name_int;
-volatile unsigned int Blinking_toggle_state; // toggle blinking if 1, clear LCD if 0
-volatile unsigned int Pattern_speed;
 
-volatile int index = 0;
-volatile unsigned int dataRead[2] = {0, 0};
-volatile unsigned int dataRead2[2] = {0, 0};
-volatile int dataRdy = 0;
-volatile int dataRdy2 = 0;
+volatile uint8_t CursorState = 0; // tracks cursor current state
+
+volatile uint8_t index = 0;
+volatile uint8_t dataRead[2] = {0, 0};
+volatile uint8_t dataRead2[2] = {0, 0};
+volatile uint8_t dataRdy = 0;
+volatile uint8_t dataRdy2 = 0;
 #define I2C_ADDRESS 0x47                //i2c address for LCD bar
 
 int main(void)
@@ -61,75 +62,65 @@ int main(void)
             }
             if(varint == 1) {
                 Last_char_int = dataint;
-            switch (Last_char_int) {
-                case 1:  Last_char_char = '1'; break;
-                case 2:  Last_char_char = '2'; break;
-                case 3:  Last_char_char = '3'; break;
-                case 4:  Last_char_char = 'A'; break;
-                case 5:  Last_char_char = '4'; break;
-                case 6:  Last_char_char = '5'; break;
-                case 7:  Last_char_char = '6'; break;
-                case 8:  Last_char_char = 'B'; break;
-                case 9:  Last_char_char = '7'; break;
-                case 10: Last_char_char = '8'; break;
-                case 11: Last_char_char = '9'; break;
-                case 12: Last_char_char = 'C'; break;
-                case 13: Last_char_char = '*'; break;
-                case 14: Last_char_char = '0'; break;
-                case 15: Last_char_char = '#'; break;
-                case 16: Last_char_char = 'D'; break;
-                default: Last_char_char = 'I'; break; // Handles invalid values
-            }
+            const char lookupTable[18] = "I123A456B789C*0#D";
+            Last_char_char = lookupTable[Last_char_int];
 
-                goToDDRLCD(0x4F); // go to final character of second row
-                writeChar(Last_char_char); // write our character
+            goToDDRLCD(0x4F); // go to final character of second row
+            writeChar(Last_char_char); // write our character
             }
-            else if (varint == 2) {
-                Pattern_name_int = dataint;
+            else if (varint == 2) { // dataint is pattern name integer
                 goToDDRLCD(0x00); // go to first character of first row
                 writeMessage("              ");
                 goToDDRLCD(0x00);
-                if (Pattern_name_int == 0) {
+                if (dataint == 0) {
                     writeMessage("static");
                 }
-                else if (Pattern_name_int == 1) {
+                else if (dataint == 1) {
                     writeMessage("toggle");
                 }
-                else if (Pattern_name_int == 2) {
+                else if (dataint == 2) {
                     writeMessage("up counter");
                 }
-                else if (Pattern_name_int == 3) {
+                else if (dataint == 3) {
                     writeMessage("in and out");
                 }
-                else if (Pattern_name_int == 4) {
+                else if (dataint == 4) {
                     writeMessage("down counter");
                 }
-                else if (Pattern_name_int == 5) {
+                else if (dataint == 5) {
                     writeMessage("rotate 1 left");
                 }
-                else if (Pattern_name_int == 6) {
+                else if (dataint == 6) {
                     writeMessage("rotate 7 right");
                 }
-                else if (Pattern_name_int == 7) {
+                else if (dataint == 7) {
                     writeMessage("fill left");
                 }
-                else if (Pattern_name_int == 8) {
-                    // clear LCD
-                }
             }
-            else if (varint == 3) {
-                Blinking_toggle_state = dataint;
+            else if (varint == 3) { // dataint is blinking toggle state
                 // if 0, turn off LCD
                 // if 1, toggle cursor blinking
                 // if 2, toggle cursor
+
+                if (dataint == 0) {
+                    clearLCD();
+                    CursorState = 0;
+                }
+                else if (dataint == 1) { // C keeps display on
+                    CursorState ^= 0b00000001;
+                    sendCommand(0x0C | CursorState); 
+                }
+                else {
+                    CursorState ^= 0b00000010;
+                    sendCommand(0x0C | CursorState); 
+                }
             }
-            else if (varint == 4) {
-                Pattern_speed = dataint;
+            else if (varint == 4) { // dataint is pattern speed
                 goToDDRLCD(0x40); // go to first character of first row
                 writeMessage("Period=");
-                unsigned char ones = (Pattern_speed/4) + '0';
+                unsigned char ones = (dataint/4) + '0';
                 writeChar(ones);
-                switch (Pattern_speed % 4) {
+                switch (dataint % 4) {
                     case 0: writeMessage(".00"); break;
                     case 1: writeMessage(".25"); break;
                     case 2: writeMessage(".50"); break;

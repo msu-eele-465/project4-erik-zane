@@ -7,6 +7,7 @@
 // review digital page 424, 414
 
 void send_Latest_Input(char last_input) {
+    __delay_cycles(2000);
     UCB0I2CSA = 0x0047; // choose slave address
     UCB0TBCNT = 0x02; // always send 2 bytes
     dataSend[0] = 1; // this will select the pattern selection variable on the slave
@@ -67,6 +68,7 @@ void send_Latest_Input(char last_input) {
     return;
 }
 void send_Pattern_Name(int Pattern) {
+    __delay_cycles(2000);
     UCB0I2CSA = 0x0047; // choose slave address
     UCB0TBCNT = 0x02;
     dataSend[0] = 2; // this will select the pattern selection variable on the slave
@@ -76,23 +78,17 @@ void send_Pattern_Name(int Pattern) {
 
 }   
 void send_Blinking_toggle(int Toggle) {
+    __delay_cycles(2000);
     UCB0I2CSA = 0x0047; // choose slave address
     UCB0TBCNT = 0x02;
     dataSend[0] = 3; // this will select the pattern selection variable on the slave
-    if (Toggle == 1) {
-        dataSend[1] = 1; // send 1 to toggle blinking
-    }
-    else if (Toggle = 2) {
-        dataSend[1] = 2; // send 2 to toggle cursor
-    }
-    else {
-        dataSend[1] = 0; // turn off cursor (and entire LCD) no matter what
-    }
+    dataSend[1] = Toggle;
     UCB0CTLW0 |= UCTXSTT; // generate start condition
     return;
 
 }
 void send_Pattern_Speed(long int new_speed) {
+    __delay_cycles(4000);
     UCB0I2CSA = 0x0047; // choose slave address
     UCB0TBCNT = 0x02;
     dataSend[0] = 4; // this will select the pattern selection variable on the slave

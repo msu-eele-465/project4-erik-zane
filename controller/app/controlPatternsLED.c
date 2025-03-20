@@ -1,12 +1,14 @@
 #include <msp430.h>
 #include <stdbool.h>
 #include <string.h>
+#include "intrinsics.h"
 #include "shared.h"
 #include "controlPatternsLED.h"
 
 // review digital page 424, 414
 
 void send_LED_Phase_Delay(long int timerCount) {
+    __delay_cycles(1000);
     UCB0I2CSA = 0x0045; // choose slave address
     UCB0TBCNT = 0x02; // always send 2 bytes
     dataSend[0] = 1; // this will select the pattern selection variable on the slave
@@ -17,6 +19,7 @@ void send_LED_Phase_Delay(long int timerCount) {
 
 }
 void send_LED_Timer_Set(void) {
+    __delay_cycles(1000);
     UCB0I2CSA = 0x0045; // choose slave address
     UCB0TBCNT = 0x02;
     dataSend[0] = 2; // this will select the pattern selection variable on the slave
@@ -26,6 +29,7 @@ void send_LED_Timer_Set(void) {
 
 }   
 void send_LED_Timer_Pause(void) {
+    __delay_cycles(1000);
     UCB0I2CSA = 0x0045; // choose slave address
     UCB0TBCNT = 0x02;
     dataSend[0] = 2; // this will select the pattern selection variable on the slave
@@ -35,6 +39,7 @@ void send_LED_Timer_Pause(void) {
 
 }
 void send_LED_Pattern(int chosenPattern) {
+    __delay_cycles(1000);
     UCB0I2CSA = 0x0045; // choose slave address
     UCB0TBCNT = 0x02;
     dataSend[0] = 3; // this will select the pattern selection variable on the slave

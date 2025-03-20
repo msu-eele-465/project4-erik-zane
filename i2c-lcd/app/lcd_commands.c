@@ -9,6 +9,8 @@ void clearLCD(void) {
     P1OUT &= ~BIT4;
     sendCommand(0x01);
     __delay_cycles(2000);
+    sendCommand(0x0C); // turn cursor off
+    __delay_cycles(2000);
     return;
 }
 void initLCD(void) {

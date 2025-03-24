@@ -80,6 +80,7 @@ int main(void)
         send_LED_Timer_Set(); // enable LED-pattern-trigger timer interrupt here
         bool input_change = true;
         while (lastInput != 'D') {
+            Data_Cnt = 0;
             if (lastInput == '1' && input_change) {
                 send_LED_Pattern(1);
                 send_Pattern_Name(1);

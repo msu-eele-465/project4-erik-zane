@@ -35,7 +35,10 @@ void stop_Timer(void) {
 
 void outputToLEDs(unsigned char val) {
     // Use P2.6 and P2.7 only
-    P2OUT = (P2OUT & ~(BIT6 | BIT7)) | ((val & 0x01) ? BIT6 : 0) | ((val & 0x02) ? BIT7 : 0);
+    P1OUT = (P1OUT & ~(BIT0 | BIT1 | BIT4 | BIT5 | BIT6 | BIT7)) | ((val & 0x01) ? BIT0 : 0) | ((val & 0x02) ? BIT1 : 0) | ((val & 0x10) ? BIT4 : 0) | ((val & 0x20) ? BIT5 : 0) | ((val & 0x40) ? BIT6 : 0) | ((val & 0x80) ? BIT7 : 0);
+
+    P2OUT = (P2OUT & ~(BIT6 | BIT7)) | ((val & 0x04) ? BIT6 : 0) | ((val & 0x08) ? BIT7 : 0);
+    return;
 }
 
 int main(void) {
@@ -45,6 +48,9 @@ int main(void) {
     // Init P2.6 and P2.7 for LED output
     P2DIR |= BIT6 | BIT7;
     P2OUT &= ~(BIT6 | BIT7);
+    P1DIR |= 0b11110011;
+    P1OUT &= ~0b11110011;
+
 
     init_I2C_Target();
     init_Timer();

@@ -1,4 +1,5 @@
 
+
 #include <msp430.h>
 #include "lcd_shared.h"
 #include "lcd_commands.h"
@@ -39,8 +40,9 @@ int main(void)
    // P1OUT &= ~BIT0;                         // Clear P1.0 output latch for a defined power-on state
     //P1DIR |= BIT0;                          // Set P1.0 to output direction
 
-    PM5CTL0 &= ~LOCKLPM5;                   // Disable the GPIO power-on default high-impedance mode
-                                            // to activate previously configured port settings
+    // Disable low-power mode / GPIO high-impedance
+    PM5CTL0 &= ~LOCKLPM5;
+
 
     initLCD();
     clearLCD();

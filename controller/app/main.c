@@ -1,3 +1,4 @@
+
 #include <msp430.h>
 #include <stdbool.h>
 #include <string.h>
@@ -26,6 +27,7 @@ volatile system_states state = LOCKED;
 int main(void)
 {
     // Stop watchdog timer
+
     WDTCTL = WDTPW | WDTHOLD;               // Stop watchdog timer
     P3DIR |= 0b00001111;   // set keypad columns to outputs pulled high
     P3OUT |= 0b00001111;

@@ -1,43 +1,55 @@
 #include <msp430.h>
 #include "patterns.h"
 
-#define I2C_ADDRESS 0x45                //i2c address for LED bar
+#define I2C_ADDRESS 0x45                // i2c address for LED bar
 
-volatile unsigned char dataReceived[2]; //buffer for received I2C data
+volatile unsigned char dataReceived[2]; // buffer for received i2c data
 volatile int dataRdy = 0;
 
+unsigned char currentUpCounter = 0;
+unsigned char toggleState = 0;
+unsigned char patternStep = 0;
+
 void init_I2C_Target(void) {
-    UCB0CTLW0 = UCSWRST;                //reset state
-    UCB0CTLW0 |= UCMODE_3 | UCSYNC;     //i2c
-    UCB0I2COA0 = I2C_ADDRESS | UCOAEN;  //set and enable address
+    UCB0CTLW0 = UCSWRST;                // put eUSCI_B0 into reset state
+    UCB0CTLW0 |= UCMODE_3 | UCSYNC;     // I2C mode, synchronous
+    UCB0I2COA0 = I2C_ADDRESS | UCOAEN;  // set and enable own address
 
     P1SEL0 |= BIT2 | BIT3;              // select P1.2 (SDA) and P1.3 (SCL) for i2c
-    P1SEL1 &= ~(BIT2 | BIT3);          
+    P1SEL1 &= ~(BIT2 | BIT3);           // clear secondary function
 
-    UCB0CTLW0 &= ~UCSWRST;              //release eUSCI_B0 for operation
-    UCB0IE |= UCRXIE0;                  //enable RX interrupt
+    UCB0CTLW0 &= ~UCSWRST;              // release eUSCI_B0 for operation
+    UCB0IE |= UCRXIE0;                  // enable RX interrupt
 }
 
 void init_Timer(void) {
-    TB0CCTL0 = CCIE;                    //enable interrupt for CCR0
-    TB0CCR0 = 32768;                    //set CCR0 for ~1s
-    TB0CTL = TBSSEL_1 | MC_1 | TBCLR;   //ACLK, Up mode, clear timer
+    TB0CCTL0 = CCIE;                    // enable interrupt for CCR0
+    TB0CCR0 = 32768;                    // set CCR0 for ~1s
+    TB0CTL = TBSSEL_1 | MC_1 | TBCLR;   // ACLK, Up mode, clear timer
 }
 
 void stop_Timer(void) {
-    TB0CTL = MC_0;                      //stop timer
-    TB0CCTL0 &= ~CCIE;                  //disable interrupt
+    TB0CTL = MC_0;                      // stop timer
+    TB0CCTL0 &= ~CCIE;                  // disable interrupt
+}
+
+void outputToLEDs(unsigned char val) {
+    // Use P2.0 - P2.7 as LED bar output
+    P2OUT = val;
 }
 
 int main(void) {
-    WDTCTL = WDTPW | WDTHOLD;           //stop watchdog timer
-    PM5CTL0 &= ~LOCKLPM5;               //enable GPIOs
+    WDTCTL = WDTPW | WDTHOLD;           // stop watchdog timer
+    PM5CTL0 &= ~LOCKLPM5;               // enable GPIOs
+
+    // Init P2.0-P2.7 for LED output
+    P2DIR |= 0xFF;
+    P2OUT &= ~0xFF;
 
     init_I2C_Target();
-    init_LED_Patterns();
     init_Timer();
 
-    __enable_interrupt();               //global interrupt
+    __enable_interrupt();               // global interrupt enable
 
     while (1) {
         if (dataRdy) {
@@ -58,7 +70,7 @@ int main(void) {
                 case 3:
                     set_LED_Pattern(value);
                     break;
-                default:                //unknown variable, do nothing
+                default:
                     break;
             }
 
@@ -79,6 +91,33 @@ __interrupt void I2C_ISR(void) {
 
 #pragma vector = TIMER0_B0_VECTOR
 __interrupt void TIMER0_B0_ISR(void) {
-    update_LED();
+    static unsigned char currPattern = 0;
+    currPattern = get_Current_Pattern();
+
+    switch (currPattern) {
+        case 1:
+            toggleState = ~toggleState;
+            outputToLEDs(toggleState);
+            break;
+        case 2:
+            currentUpCounter++;
+            outputToLEDs(currentUpCounter);
+            break;
+        case 3:
+            switch (patternStep) {
+                case 0: outputToLEDs(0x18); break; // 00011000
+                case 1: outputToLEDs(0x24); break; // 00100100
+                case 2: outputToLEDs(0x42); break; // 01000010
+                case 3: outputToLEDs(0x81); break; // 10000001
+                case 4: outputToLEDs(0x42); break; // 01000010
+                case 5: outputToLEDs(0x24); break; // 00100100
+                default: patternStep = -1; break;
+            }
+            patternStep++;
+            break;
+        default:
+            break;
+    }
+
     TB0CCTL0 &= ~CCIFG;
-}
+} 

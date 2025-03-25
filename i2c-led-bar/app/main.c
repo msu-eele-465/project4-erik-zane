@@ -3,7 +3,7 @@
 
 #define I2C_ADDRESS 0x45                // i2c address for LED bar
 
-volatile unsigned char dataReceived[2]; // buffer for received i2c data
+volatile unsigned char dataReceived[2]; // buffer for received I2C data
 volatile int dataRdy = 0;
 
 unsigned char currentUpCounter = 0;
@@ -15,7 +15,7 @@ void init_I2C_Target(void) {
     UCB0CTLW0 |= UCMODE_3 | UCSYNC;     // I2C mode, synchronous
     UCB0I2COA0 = I2C_ADDRESS | UCOAEN;  // set and enable own address
 
-    P1SEL0 |= BIT2 | BIT3;              // select P1.2 (SDA) and P1.3 (SCL) for i2c
+    P1SEL0 |= BIT2 | BIT3;              // select P1.2 (SDA) and P1.3 (SCL) for I2C
     P1SEL1 &= ~(BIT2 | BIT3);           // clear secondary function
 
     UCB0CTLW0 &= ~UCSWRST;              // release eUSCI_B0 for operation
@@ -24,7 +24,7 @@ void init_I2C_Target(void) {
 
 void init_Timer(void) {
     TB0CCTL0 = CCIE;                    // enable interrupt for CCR0
-    TB0CCR0 = 32768;                    // set CCR0 for ~1s
+    TB0CCR0 = 32768;                    // set CCR0 for ~1s (assuming ACLK 32.768kHz)
     TB0CTL = TBSSEL_1 | MC_1 | TBCLR;   // ACLK, Up mode, clear timer
 }
 
@@ -34,17 +34,17 @@ void stop_Timer(void) {
 }
 
 void outputToLEDs(unsigned char val) {
-    // Use P2.0 - P2.7 as LED bar output
-    P2OUT = val;
+    // Use P2.6 and P2.7 only
+    P2OUT = (P2OUT & ~(BIT6 | BIT7)) | ((val & 0x01) ? BIT6 : 0) | ((val & 0x02) ? BIT7 : 0);
 }
 
 int main(void) {
     WDTCTL = WDTPW | WDTHOLD;           // stop watchdog timer
     PM5CTL0 &= ~LOCKLPM5;               // enable GPIOs
 
-    // Init P2.0-P2.7 for LED output
-    P2DIR |= 0xFF;
-    P2OUT &= ~0xFF;
+    // Init P2.6 and P2.7 for LED output
+    P2DIR |= BIT6 | BIT7;
+    P2OUT &= ~(BIT6 | BIT7);
 
     init_I2C_Target();
     init_Timer();
@@ -105,12 +105,12 @@ __interrupt void TIMER0_B0_ISR(void) {
             break;
         case 3:
             switch (patternStep) {
-                case 0: outputToLEDs(0x18); break; // 00011000
-                case 1: outputToLEDs(0x24); break; // 00100100
-                case 2: outputToLEDs(0x42); break; // 01000010
-                case 3: outputToLEDs(0x81); break; // 10000001
-                case 4: outputToLEDs(0x42); break; // 01000010
-                case 5: outputToLEDs(0x24); break; // 00100100
+                case 0: outputToLEDs(0x00); break; // nothing on
+                case 1: outputToLEDs(0x01); break; // only P2.6 on
+                case 2: outputToLEDs(0x02); break; // only P2.7 on
+                case 3: outputToLEDs(0x03); break; // both on
+                case 4: outputToLEDs(0x02); break; // only P2.7 on
+                case 5: outputToLEDs(0x01); break; // only P2.6 on
                 default: patternStep = -1; break;
             }
             patternStep++;
@@ -120,4 +120,4 @@ __interrupt void TIMER0_B0_ISR(void) {
     }
 
     TB0CCTL0 &= ~CCIFG;
-} 
+}

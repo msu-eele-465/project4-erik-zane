@@ -68,7 +68,7 @@ void send_Latest_Input(char last_input) {
     return;
 }
 void send_Pattern_Name(int Pattern) {
-    __delay_cycles(2000);
+    __delay_cycles(4000);
     UCB0I2CSA = 0x0047; // choose slave address
     UCB0TBCNT = 0x02;
     dataSend[0] = 2; // this will select the pattern selection variable on the slave

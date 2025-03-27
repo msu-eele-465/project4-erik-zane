@@ -33,13 +33,13 @@ void stop_Timer(void) {
     TB0CCTL0 &= ~CCIE;                  // disable interrupt
 }
 
-void outputToLEDs(unsigned char val) {
+//void outputToLEDs(unsigned char val) {
     // Use P2.6 and P2.7 only
-    P1OUT = (P1OUT & ~(BIT0 | BIT1 | BIT4 | BIT5 | BIT6 | BIT7)) | ((val & 0x01) ? BIT0 : 0) | ((val & 0x02) ? BIT1 : 0) | ((val & 0x10) ? BIT4 : 0) | ((val & 0x20) ? BIT5 : 0) | ((val & 0x40) ? BIT6 : 0) | ((val & 0x80) ? BIT7 : 0);
+//    P1OUT = (P1OUT & ~(BIT0 | BIT1 | BIT4 | BIT5 | BIT6 | BIT7)) | ((val & 0x01) ? BIT0 : 0) | ((val & 0x02) ? BIT1 : 0) | ((val & 0x10) ? BIT4 : 0) | ((val & 0x20) ? BIT5 : 0) | ((val & 0x40) ? BIT6 : 0) | ((val & 0x80) ? BIT7 : 0);
 
-    P2OUT = (P2OUT & ~(BIT6 | BIT7)) | ((val & 0x04) ? BIT6 : 0) | ((val & 0x08) ? BIT7 : 0);
-    return;
-}
+//    P2OUT = (P2OUT & ~(BIT6 | BIT7)) | ((val & 0x04) ? BIT6 : 0) | ((val & 0x08) ? BIT7 : 0);
+//    return;
+//}
 
 int main(void) {
     WDTCTL = WDTPW | WDTHOLD;           // stop watchdog timer
@@ -97,33 +97,6 @@ __interrupt void I2C_ISR(void) {
 
 #pragma vector = TIMER0_B0_VECTOR
 __interrupt void TIMER0_B0_ISR(void) {
-    static unsigned char currPattern = 0;
-    currPattern = get_Current_Pattern();
-
-    switch (currPattern) {
-        case 1:
-            toggleState = ~toggleState;
-            outputToLEDs(toggleState);
-            break;
-        case 2:
-            currentUpCounter++;
-            outputToLEDs(currentUpCounter);
-            break;
-        case 3:
-            switch (patternStep) {
-                case 0: outputToLEDs(0x00); break; // nothing on
-                case 1: outputToLEDs(0x01); break; // only P2.6 on
-                case 2: outputToLEDs(0x02); break; // only P2.7 on
-                case 3: outputToLEDs(0x03); break; // both on
-                case 4: outputToLEDs(0x02); break; // only P2.7 on
-                case 5: outputToLEDs(0x01); break; // only P2.6 on
-                default: patternStep = -1; break;
-            }
-            patternStep++;
-            break;
-        default:
-            break;
-    }
-
-    TB0CCTL0 &= ~CCIFG;
+    update_LED();               // call centralized logic in patterns.c
+    TB0CCTL0 &= ~CCIFG;         // clear interrupt flag
 }

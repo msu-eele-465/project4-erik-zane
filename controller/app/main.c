@@ -290,14 +290,14 @@ __interrupt void TIMERB1_ISR(void) {
 #pragma vector=EUSCI_B0_VECTOR
 __interrupt void EUSCI_B0_I2C_ISR(void) {
     if (Data_Cnt == 0) {
-        UCB0TXBUF = dataSend[0];
         Data_Cnt = 1;
+        UCB0TXBUF = dataSend[0];
         UCB0IFG |= UCTXIFG0; 
     }
     else {
-        UCB0TXBUF = dataSend[1];
         Data_Cnt = 0;
-        //UCB0IFG &= ~UCTXIFG0; 
+        UCB0TXBUF = dataSend[1];
+        UCB0IFG &= ~UCTXIFG0; 
     }
     // likely need to clear interrupt flag following this
 }

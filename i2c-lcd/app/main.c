@@ -14,6 +14,7 @@ volatile char Last_char_char;
 volatile uint8_t CursorState = 0; // tracks cursor current state
 
 volatile uint8_t index = 0;
+volatile uint8_t status_counter = 6; // tracks status blinks
 volatile uint8_t dataRead[2] = {0, 0};
 volatile uint8_t dataRead2[2] = {0, 0};
 volatile uint8_t dataRdy = 0;
@@ -27,6 +28,13 @@ int main(void)
     P2DIR |= 0b11000000;
     P1OUT &= ~0b00110011;                    // P1.5 is Enable Pin
     P1DIR |= 0b00110011;                    // P1.4 is RS pin
+
+    P2OUT &= ~BIT0;                      // status LED
+    P2DIR |= BIT0; 
+    // status interrupt
+    TB0CCTL0 |= CCIE;                            //CCIE enables Timer B0 interrupt
+    TB0CCR0 = 32768;                            //sets Timer B0 to 1 second (32.768 kHz)
+    TB0CTL |= TBSSEL_1 | ID_0 | MC__UP | TBCLR;    //ACLK, No divider, Up mode, Clear timer
 
     // I2C slave code
     UCB0CTLW0 = UCSWRST;                //puts eUSCI_B0 into a reset state
@@ -50,6 +58,11 @@ int main(void)
     while(1)
     {   
         if (dataRdy == 1 || dataRdy2 == 1) {
+            P2OUT |= BIT0;
+            TB0CCTL0 &= ~CCIE;
+            TB0CCR0 = 1; 
+            TB0CCR0 = 32768; 
+            status_counter = 0;
             unsigned int varint;
             unsigned int dataint;
             if (dataRdy == 1) {
@@ -132,6 +145,7 @@ int main(void)
             else {
                 // do something or nothing in case of invalid send
             }
+            TB0CCTL0 |= CCIE;
         }
     }
 }
@@ -139,6 +153,7 @@ int main(void)
 #pragma vector = EUSCI_B0_VECTOR
 __interrupt void I2C_ISR(void) {
     if (UCB0IFG & UCRXIFG0) {
+        TB0CCTL0 &= ~CCIE;
         if (dataRdy == 1) {
             if (index == 1) {
                 dataRead2[1] = UCB0RXBUF;
@@ -161,5 +176,18 @@ __interrupt void I2C_ISR(void) {
                 index = 1;
             }
         }
+        TB0CCTL0 |= CCIE;
     }
 }
+
+#pragma vector = TIMER0_B0_VECTOR               //time B0 ISR
+__interrupt void TIMERB0_ISR(void) {
+    if (status_counter < 3) {
+        P2OUT |= BIT0;                              //toggles P1.0 LED
+        status_counter++;
+    }
+    else {
+        P2OUT &= ~BIT0; 
+    } 
+    TB0CCTL0 &= ~CCIFG; 
+} 
